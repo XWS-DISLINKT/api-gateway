@@ -6,6 +6,7 @@ replace github.com/XWS-DISLINKT/dislinkt/common => ../common
 
 require (
 	github.com/XWS-DISLINKT/dislinkt/common v1.0.0
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.10.0
 	google.golang.org/grpc v1.46.0
 )
