@@ -43,7 +43,7 @@ func (server *Server) initCustomHandlers() {
 	profileHandler := api.NewProfileHandler(profileEndpoint)
 	profileHandler.Init(server.mux)
 	authEndpoint := fmt.Sprintf("%s:%s", server.config.AuthHost, server.config.AuthPort)
-	authHandler := api.NewAuthHandler(authEndpoint)
+	authHandler := api.NewAuthHandler(authEndpoint, profileEndpoint)
 	authHandler.Init(server.mux)
 }
 
