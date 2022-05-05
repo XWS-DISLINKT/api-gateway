@@ -24,8 +24,8 @@ func (handler *ProfileHandler) Init(mux *runtime.ServeMux) {
 	err := mux.HandlePath("GET", "/profile", handler.GetAll)
 	err = mux.HandlePath("GET", "/profile/{id}", handler.Get)
 	err = mux.HandlePath("POST", "/profile", handler.Create)
-	//err = mux.HandlePath("PUT", "/profile/{id}", handler.Update)
-	//err = mux.HandlePath("GET", "", handler.GetByName)
+	err = mux.HandlePath("PUT", "/profile/{id}", handler.Update)
+	err = mux.HandlePath("GET", "/profile/search/{name}", handler.GetByName)
 	if err != nil {
 		panic(err)
 	}
@@ -109,19 +109,50 @@ func (handler *ProfileHandler) Create(w http.ResponseWriter, r *http.Request, pa
 }
 
 func (handler *ProfileHandler) Update(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
-	request := profile.CreateProfileRequest{}
+	if !services.JWTValid(w, r) {
+		return
+	}
+	request := profile.UpdateProfileRequest{}
 	err := json.NewDecoder(r.Body).Decode(&request)
+
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	responseProfile, err := services.NewProfileClient(handler.profileClientAdress).Create(context.TODO(), &request)
+
+	if request.Profile.Username != services.LoggedUser {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	responseProfile, err := services.NewProfileClient(handler.profileClientAdress).Update(context.TODO(), &request)
+
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	response, err := json.Marshal(responseProfile)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(response)
+}
+
+func (handler *ProfileHandler) GetByName(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	name := pathParams["name"]
+	request := profile.GetByNameRequest{Name: name}
+	responseProfiles, err := services.NewProfileClient(handler.profileClientAdress).GetByName(context.TODO(), &request)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	response, err := json.Marshal(responseProfiles)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

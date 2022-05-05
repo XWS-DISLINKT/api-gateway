@@ -6,7 +6,7 @@ import (
 )
 
 var jwtKey = []byte("secret_key")
-var loggedUser = ""
+var LoggedUser = ""
 
 type Claims struct {
 	Username string `json:"username"`
@@ -43,6 +43,6 @@ func JWTValid(w http.ResponseWriter, r *http.Request) bool {
 		w.WriteHeader(http.StatusUnauthorized)
 		return false
 	}
-	loggedUser = claims.Username
+	LoggedUser = claims.Username
 	return true
 }
