@@ -23,6 +23,9 @@ func NewProfileHandler(profileClientAdress string) Handler {
 func (handler *ProfileHandler) Init(mux *runtime.ServeMux) {
 	err := mux.HandlePath("GET", "/profile", handler.GetAll)
 	err = mux.HandlePath("GET", "/profile/{id}", handler.Get)
+	err = mux.HandlePath("POST", "/profile", handler.Create)
+	//err = mux.HandlePath("PUT", "/profile/{id}", handler.Update)
+	//err = mux.HandlePath("GET", "", handler.GetByName)
 	if err != nil {
 		panic(err)
 	}
@@ -79,4 +82,52 @@ func (handler *ProfileHandler) addProfiles(profiles *[]*profile.Profile) error {
 		return err
 	}
 	return nil
+}
+
+func (handler *ProfileHandler) Create(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	request := profile.CreateProfileRequest{}
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	responseProfile, err := services.NewProfileClient(handler.profileClientAdress).Create(context.TODO(), &request)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	response, err := json.Marshal(responseProfile)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(response)
+}
+
+func (handler *ProfileHandler) Update(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	request := profile.CreateProfileRequest{}
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	responseProfile, err := services.NewProfileClient(handler.profileClientAdress).Create(context.TODO(), &request)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	response, err := json.Marshal(responseProfile)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(response)
 }
