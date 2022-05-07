@@ -115,7 +115,18 @@ func (handler *ProfileHandler) Update(w http.ResponseWriter, r *http.Request, pa
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+<<<<<<< Updated upstream
 	responseProfile, err := services.NewProfileClient(handler.profileClientAdress).Create(context.TODO(), &request)
+=======
+
+	if pathParams["id"] != services.LoggedUserId {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	responseProfile, err := services.NewProfileClient(handler.profileClientAdress).Update(context.TODO(), &request)
+
+>>>>>>> Stashed changes
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

@@ -1,13 +1,8 @@
 package api
 
 import (
-	"api-gateway/domain"
-	"api-gateway/infrastructure/services"
-	"context"
-	"encoding/json"
 	"net/http"
 
-	profile "github.com/XWS-DISLINKT/dislinkt/common/proto/profile-service"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 )
 
@@ -32,21 +27,6 @@ func (handler *AuthHandler) Init(mux *runtime.ServeMux) {
 }
 
 func (handler *AuthHandler) Login(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
-	var credentials domain.Credentials
-	err := json.NewDecoder(r.Body).Decode(&credentials)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	profileClient := services.NewProfileClient(handler.profileClientAdress)
-	response, err := profileClient.GetCredentials(context.TODO(), &profile.GetCredentialsRequest{Username: credentials.Username})
-
-	if err != nil || response.Username != credentials.Username || response.Password != credentials.Password {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
 	http.Redirect(w, r, "http://"+handler.authClientAdress+"/login", 307)
 }
 
