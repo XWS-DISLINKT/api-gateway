@@ -3,7 +3,10 @@ package startup
 import (
 	"api-gateway/infrastructure/api"
 	cfg "api-gateway/startup/config"
+	"context"
 	"fmt"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"log"
 	"net/http"
 
