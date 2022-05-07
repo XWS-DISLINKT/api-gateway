@@ -24,7 +24,7 @@ func (handler *ProfileHandler) Init(mux *runtime.ServeMux) {
 	err := mux.HandlePath("GET", "/profile", handler.GetAll)
 	err = mux.HandlePath("GET", "/profile/{id}", handler.Get)
 	err = mux.HandlePath("POST", "/profile", handler.Create)
-	//err = mux.HandlePath("PUT", "/profile/{id}", handler.Update)
+	err = mux.HandlePath("PUT", "/profile/{id}", handler.Update)
 	//err = mux.HandlePath("GET", "", handler.GetByName)
 	if err != nil {
 		panic(err)
@@ -109,6 +109,9 @@ func (handler *ProfileHandler) Create(w http.ResponseWriter, r *http.Request, pa
 }
 
 func (handler *ProfileHandler) Update(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	if !services.JWTValid(w, r) {
+		return
+	}
 	request := profile.UpdateProfileRequest{}
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
@@ -120,6 +123,8 @@ func (handler *ProfileHandler) Update(w http.ResponseWriter, r *http.Request, pa
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
+
+	request.Id = pathParams["id"]
 
 	responseProfile, err := services.NewProfileClient(handler.profileClientAdress).Update(context.TODO(), &request)
 
