@@ -109,15 +109,12 @@ func (handler *ProfileHandler) Create(w http.ResponseWriter, r *http.Request, pa
 }
 
 func (handler *ProfileHandler) Update(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
-	request := profile.CreateProfileRequest{}
+	request := profile.UpdateProfileRequest{}
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-<<<<<<< Updated upstream
-	responseProfile, err := services.NewProfileClient(handler.profileClientAdress).Create(context.TODO(), &request)
-=======
 
 	if pathParams["id"] != services.LoggedUserId {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -126,7 +123,6 @@ func (handler *ProfileHandler) Update(w http.ResponseWriter, r *http.Request, pa
 
 	responseProfile, err := services.NewProfileClient(handler.profileClientAdress).Update(context.TODO(), &request)
 
->>>>>>> Stashed changes
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

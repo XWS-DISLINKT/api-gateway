@@ -6,12 +6,8 @@ import (
 )
 
 var jwtKey = []byte("secret_key")
-<<<<<<< Updated upstream
-var loggedUser = ""
-=======
 var LoggedUserUsername = ""
 var LoggedUserId = ""
->>>>>>> Stashed changes
 
 type Claims struct {
 	Id       string `json:"id"`
@@ -49,11 +45,7 @@ func JWTValid(w http.ResponseWriter, r *http.Request) bool {
 		w.WriteHeader(http.StatusUnauthorized)
 		return false
 	}
-<<<<<<< Updated upstream
-	loggedUser = claims.Username
-=======
 	LoggedUserUsername = claims.Username
 	LoggedUserId = claims.Id
->>>>>>> Stashed changes
 	return true
 }
