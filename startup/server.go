@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 
+	postGw "github.com/XWS-DISLINKT/dislinkt/common/proto/post-service"
+	profileGw "github.com/XWS-DISLINKT/dislinkt/common/proto/profile-service"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 )
 
@@ -25,7 +27,22 @@ func NewServer(config *cfg.Config) *Server {
 	return server
 }
 
-func (server *Server) initHandlers() {}
+func (server *Server) initHandlers() {
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	postEndpoint := fmt.Sprintf("%s:%s", server.config.PostHost, server.config.PostPort)
+	err := postGw.RegisterPostServiceHandlerFromEndpoint(context.TODO(), server.mux, postEndpoint, opts)
+
+	if err != nil {
+		panic(err)
+	}
+
+	profileEndpoint := fmt.Sprintf("%s:%s", server.config.ProfileHost, server.config.ProfilePort)
+	err = profileGw.RegisterProfileServiceHandlerFromEndpoint(context.TODO(), server.mux, profileEndpoint, opts)
+
+	if err != nil {
+		panic(err)
+	}
+}
 
 func (server *Server) initCustomHandlers() {
 	profileEndpoint := fmt.Sprintf("%s:%s", server.config.ProfileHost, server.config.ProfilePort)

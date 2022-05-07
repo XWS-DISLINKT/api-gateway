@@ -25,7 +25,7 @@ func (handler *ProfileHandler) Init(mux *runtime.ServeMux) {
 	err = mux.HandlePath("GET", "/profile/{id}", handler.Get)
 	err = mux.HandlePath("POST", "/profile", handler.Create)
 	err = mux.HandlePath("PUT", "/profile/{id}", handler.Update)
-	//err = mux.HandlePath("GET", "", handler.GetByName)
+	err = mux.HandlePath("GET", "/profile/search/{name}", handler.GetByName)
 	if err != nil {
 		panic(err)
 	}
@@ -114,17 +114,18 @@ func (handler *ProfileHandler) Update(w http.ResponseWriter, r *http.Request, pa
 	}
 	request := profile.UpdateProfileRequest{}
 	err := json.NewDecoder(r.Body).Decode(&request)
+
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	if pathParams["id"] != services.LoggedUserId {
+	request.Id = pathParams["id"]
+
+	if request.Id != services.LoggedUserId {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-
-	request.Id = pathParams["id"]
 
 	responseProfile, err := services.NewProfileClient(handler.profileClientAdress).Update(context.TODO(), &request)
 
@@ -134,6 +135,26 @@ func (handler *ProfileHandler) Update(w http.ResponseWriter, r *http.Request, pa
 	}
 
 	response, err := json.Marshal(responseProfile)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(response)
+}
+
+func (handler *ProfileHandler) GetByName(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	name := pathParams["name"]
+	request := profile.GetByNameRequest{Name: name}
+	responseProfiles, err := services.NewProfileClient(handler.profileClientAdress).GetByName(context.TODO(), &request)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	response, err := json.Marshal(responseProfiles)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
