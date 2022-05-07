@@ -3,15 +3,11 @@ package startup
 import (
 	"api-gateway/infrastructure/api"
 	cfg "api-gateway/startup/config"
-	"context"
 	"fmt"
 	"log"
 	"net/http"
 
-	postGw "github.com/XWS-DISLINKT/dislinkt/common/proto/post-service"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Server struct {
@@ -29,19 +25,15 @@ func NewServer(config *cfg.Config) *Server {
 	return server
 }
 
-func (server *Server) initHandlers() {
-	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-	postEndpoint := fmt.Sprintf("%s:%s", server.config.PostHost, server.config.PostPort)
-	err := postGw.RegisterPostServiceHandlerFromEndpoint(context.TODO(), server.mux, postEndpoint, opts)
-	if err != nil {
-		panic(err)
-	}
-}
+func (server *Server) initHandlers() {}
 
 func (server *Server) initCustomHandlers() {
 	profileEndpoint := fmt.Sprintf("%s:%s", server.config.ProfileHost, server.config.ProfilePort)
 	profileHandler := api.NewProfileHandler(profileEndpoint)
 	profileHandler.Init(server.mux)
+	postEndpoint := fmt.Sprintf("%s:%s", server.config.PostHost, server.config.PostPort)
+	postHandler := api.NewPostHandler(postEndpoint)
+	postHandler.Init(server.mux)
 	authEndpoint := fmt.Sprintf("%s:%s", server.config.AuthHost, server.config.AuthPort)
 	authHandler := api.NewAuthHandler(authEndpoint, profileEndpoint)
 	authHandler.Init(server.mux)
