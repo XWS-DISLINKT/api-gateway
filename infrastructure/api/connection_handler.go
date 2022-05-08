@@ -63,7 +63,7 @@ func (handler *ConnectionsHandler) MakeConnectionWithPublicProfile(w http.Respon
 		return
 	}
 
-	request := connection.ConnectionRequest{}
+	request := connection.ConnectionBody{}
 
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
@@ -71,7 +71,7 @@ func (handler *ConnectionsHandler) MakeConnectionWithPublicProfile(w http.Respon
 		return
 	}
 
-	if request.ConnectionBody.GetRequestSenderId() != services.LoggedUserId {
+	if request.GetRequestSenderId() != services.LoggedUserId {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -98,7 +98,7 @@ func (handler *ConnectionsHandler) MakeConnectionRequest(w http.ResponseWriter, 
 		return
 	}
 
-	request := connection.ConnectionRequest{}
+	request := connection.ConnectionBody{}
 
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
@@ -106,7 +106,7 @@ func (handler *ConnectionsHandler) MakeConnectionRequest(w http.ResponseWriter, 
 		return
 	}
 
-	if request.ConnectionBody.GetRequestSenderId() != services.LoggedUserId {
+	if request.GetRequestSenderId() != services.LoggedUserId {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -133,7 +133,7 @@ func (handler *ConnectionsHandler) ApproveConnectionRequest(w http.ResponseWrite
 		return
 	}
 
-	request := connection.ConnectionRequest{}
+	request := connection.ConnectionBody{}
 
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
@@ -141,7 +141,7 @@ func (handler *ConnectionsHandler) ApproveConnectionRequest(w http.ResponseWrite
 		return
 	}
 
-	if request.ConnectionBody.GetRequestSenderId() != services.LoggedUserId {
+	if request.GetRequestSenderId() != services.LoggedUserId {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
