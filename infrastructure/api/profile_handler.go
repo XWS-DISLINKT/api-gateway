@@ -4,6 +4,7 @@ import (
 	"api-gateway/infrastructure/services"
 	"context"
 	"encoding/json"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"net/http"
 
 	profile "github.com/XWS-DISLINKT/dislinkt/common/proto/profile-service"
@@ -49,7 +50,7 @@ func (handler *ProfileHandler) Get(w http.ResponseWriter, r *http.Request, pathP
 func (handler *ProfileHandler) addProfile(responseProfile *profile.Profile, id string) error {
 	profileClient := services.NewProfileClient(handler.profileClientAdress)
 	response, err := profileClient.Get(context.TODO(), &profile.GetRequest{Id: id})
-	*responseProfile = *response.Profile
+	*responseProfile = *response
 	if err != nil {
 		return err
 	}
@@ -76,7 +77,7 @@ func (handler *ProfileHandler) GetAll(w http.ResponseWriter, r *http.Request, pa
 
 func (handler *ProfileHandler) addProfiles(profiles *[]*profile.Profile) error {
 	profileClient := services.NewProfileClient(handler.profileClientAdress)
-	response, err := profileClient.GetAll(context.TODO(), &profile.GetAllRequest{})
+	response, err := profileClient.GetAll(context.TODO(), &emptypb.Empty{})
 	*profiles = response.Profiles
 	if err != nil {
 		return err
@@ -85,7 +86,7 @@ func (handler *ProfileHandler) addProfiles(profiles *[]*profile.Profile) error {
 }
 
 func (handler *ProfileHandler) Create(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
-	request := profile.CreateProfileRequest{}
+	request := profile.NewProfile{}
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -112,7 +113,7 @@ func (handler *ProfileHandler) Update(w http.ResponseWriter, r *http.Request, pa
 	if !services.JWTValid(w, r) {
 		return
 	}
-	request := profile.UpdateProfileRequest{}
+	request := profile.Profile{}
 	err := json.NewDecoder(r.Body).Decode(&request)
 
 	if err != nil {
