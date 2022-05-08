@@ -76,21 +76,19 @@ func (handler *ConnectionsHandler) MakeConnectionWithPublicProfile(w http.Respon
 		return
 	}
 
-	connectionResponse, err := services.ConnectionsClient(handler.connectionsClientAddress).MakeConnectionWithPublicProfile(context.TODO(), &request)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	response, err := json.Marshal(connectionResponse)
+	response, err := services.ConnectionsClient(handler.connectionsClientAddress).MakeConnectionWithPublicProfile(context.TODO(), &request)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
+	if !response.Success {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(response)
 }
 
 func (handler *ConnectionsHandler) MakeConnectionRequest(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
@@ -111,21 +109,19 @@ func (handler *ConnectionsHandler) MakeConnectionRequest(w http.ResponseWriter, 
 		return
 	}
 
-	connectionResponse, err := services.ConnectionsClient(handler.connectionsClientAddress).MakeConnectionRequest(context.TODO(), &request)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	response, err := json.Marshal(connectionResponse)
+	response, err := services.ConnectionsClient(handler.connectionsClientAddress).MakeConnectionRequest(context.TODO(), &request)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
+	if !response.Success {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(response)
 }
 
 func (handler *ConnectionsHandler) ApproveConnectionRequest(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
