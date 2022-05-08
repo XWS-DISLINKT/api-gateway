@@ -95,19 +95,16 @@ func (handler *ConnectionsHandler) ApproveConnectionRequest(w http.ResponseWrite
 
 	connectionResponse, err := services.ConnectionsClient(handler.connectionsClientAddress).ApproveConnectionRequest(context.TODO(), &request)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	response, err := json.Marshal(connectionResponse)
-	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	if !connectionResponse.Success || err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
-	w.Write(response)
 }
 
 func (handler *ConnectionsHandler) GetConnectionsUsernamesFor(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
@@ -116,7 +113,10 @@ func (handler *ConnectionsHandler) GetConnectionsUsernamesFor(w http.ResponseWri
 
 	response, err := services.ConnectionsClient(handler.connectionsClientAddress).GetConnectionsUsernamesFor(context.TODO(),
 		&connectionRequest.GetConnectionsUsernamesRequest{Id: id})
-	usernames = response.Usernames
+
+	if response.Usernames != nil {
+		usernames = response.Usernames
+	}
 
 	res, err := json.Marshal(usernames)
 	if err != nil {
@@ -135,7 +135,10 @@ func (handler *ConnectionsHandler) GetRequestsUsernamesFor(w http.ResponseWriter
 
 	response, err := services.ConnectionsClient(handler.connectionsClientAddress).GetRequestsUsernamesFor(context.TODO(),
 		&connectionRequest.GetConnectionsUsernamesRequest{Id: id})
-	usernames = response.Usernames
+
+	if response.Usernames != nil {
+		usernames = response.Usernames
+	}
 
 	resp, err := json.Marshal(usernames)
 	if err != nil {
