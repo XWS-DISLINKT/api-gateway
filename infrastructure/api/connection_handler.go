@@ -7,7 +7,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"net/http"
 
-	connectionRequest "github.com/XWS-DISLINKT/dislinkt/common/proto/connection-service"
+	connection "github.com/XWS-DISLINKT/dislinkt/common/proto/connection-service"
 )
 
 type ConnectionsHandler struct {
@@ -40,7 +40,7 @@ func (handler *ConnectionsHandler) MakeConnectionWithPublicProfile(w http.Respon
 		return
 	}
 
-	request := connectionRequest.ConnectionRequest{}
+	request := connection.ConnectionRequest{}
 
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
@@ -75,7 +75,7 @@ func (handler *ConnectionsHandler) MakeConnectionRequest(w http.ResponseWriter, 
 		return
 	}
 
-	request := connectionRequest.ConnectionRequest{}
+	request := connection.ConnectionRequest{}
 
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
@@ -110,7 +110,7 @@ func (handler *ConnectionsHandler) ApproveConnectionRequest(w http.ResponseWrite
 		return
 	}
 
-	request := connectionRequest.ConnectionRequest{}
+	request := connection.ConnectionRequest{}
 
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
@@ -151,7 +151,7 @@ func (handler *ConnectionsHandler) GetConnectionsUsernamesFor(w http.ResponseWri
 	}
 
 	response, err := services.ConnectionsClient(handler.connectionsClientAddress).GetConnectionsUsernamesFor(context.TODO(),
-		&connectionRequest.GetConnectionsUsernamesRequest{Id: id})
+		&connection.GetConnectionsUsernamesRequest{Id: id})
 
 	if response.Usernames != nil {
 		usernames = response.Usernames
@@ -182,7 +182,7 @@ func (handler *ConnectionsHandler) GetRequestsUsernamesFor(w http.ResponseWriter
 	}
 
 	response, err := services.ConnectionsClient(handler.connectionsClientAddress).GetRequestsUsernamesFor(context.TODO(),
-		&connectionRequest.GetConnectionsUsernamesRequest{Id: id})
+		&connection.GetConnectionsUsernamesRequest{Id: id})
 
 	if response.Usernames != nil {
 		usernames = response.Usernames
