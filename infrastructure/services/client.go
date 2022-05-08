@@ -24,6 +24,7 @@ func ConnectionsClient(address string) connection.ConnectionServiceClient {
 		log.Fatalf("Failed to start gRPC connection to profile service: %v", err)
 	}
 	return connection.NewConnectionServiceClient(conn)
+}
 
 func NewPostClient(address string) post.PostServiceClient {
 	conn, err := getConnection(address)
