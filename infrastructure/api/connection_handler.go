@@ -32,12 +32,24 @@ func (handler *ConnectionsHandler) Init(mux *runtime.ServeMux) {
 	}
 }
 
+// auth autz za POST i PUT, get requests usernames
+// get connections usernames authz, opciono auth
+
 func (handler *ConnectionsHandler) MakeConnectionWithPublicProfile(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	if !services.JWTValid(w, r) {
+		return
+	}
+
 	request := connectionRequest.ConnectionRequest{}
 
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if request.ConnectionBody.GetRequestSenderId() != services.LoggedUserId {
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
@@ -59,11 +71,20 @@ func (handler *ConnectionsHandler) MakeConnectionWithPublicProfile(w http.Respon
 }
 
 func (handler *ConnectionsHandler) MakeConnectionRequest(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	if !services.JWTValid(w, r) {
+		return
+	}
+
 	request := connectionRequest.ConnectionRequest{}
 
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if request.ConnectionBody.GetRequestSenderId() != services.LoggedUserId {
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
@@ -85,11 +106,20 @@ func (handler *ConnectionsHandler) MakeConnectionRequest(w http.ResponseWriter, 
 }
 
 func (handler *ConnectionsHandler) ApproveConnectionRequest(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	if !services.JWTValid(w, r) {
+		return
+	}
+
 	request := connectionRequest.ConnectionRequest{}
 
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if request.ConnectionBody.GetRequestSenderId() != services.LoggedUserId {
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
@@ -108,8 +138,17 @@ func (handler *ConnectionsHandler) ApproveConnectionRequest(w http.ResponseWrite
 }
 
 func (handler *ConnectionsHandler) GetConnectionsUsernamesFor(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	if !services.JWTValid(w, r) {
+		return
+	}
+	
 	usernames := make([]string, 0)
 	id := pathParams["id"]
+
+	if id != services.LoggedUserId {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 
 	response, err := services.ConnectionsClient(handler.connectionsClientAddress).GetConnectionsUsernamesFor(context.TODO(),
 		&connectionRequest.GetConnectionsUsernamesRequest{Id: id})
@@ -130,8 +169,17 @@ func (handler *ConnectionsHandler) GetConnectionsUsernamesFor(w http.ResponseWri
 }
 
 func (handler *ConnectionsHandler) GetRequestsUsernamesFor(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	if !services.JWTValid(w, r) {
+		return
+	}
+
 	usernames := make([]string, 0)
 	id := pathParams["id"]
+
+	if id != services.LoggedUserId {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 
 	response, err := services.ConnectionsClient(handler.connectionsClientAddress).GetRequestsUsernamesFor(context.TODO(),
 		&connectionRequest.GetConnectionsUsernamesRequest{Id: id})
