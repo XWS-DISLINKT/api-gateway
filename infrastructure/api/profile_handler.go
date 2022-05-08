@@ -33,28 +33,30 @@ func (handler *ProfileHandler) Init(mux *runtime.ServeMux) {
 }
 
 func (handler *ProfileHandler) Get(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
-	responseProfile := profile.Profile{}
+	id := pathParams["id"]
+	profileClient := services.NewProfileClient(handler.profileClientAdress)
+	profile, err := profileClient.Get(context.TODO(), &profile.GetRequest{Id: id})
 
-	handler.addProfile(&responseProfile, pathParams["id"])
-
-	response, err := json.Marshal(responseProfile)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	if profile.Id == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	response, err := json.Marshal(profile)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(response)
-}
-
-func (handler *ProfileHandler) addProfile(responseProfile *profile.Profile, id string) error {
-	profileClient := services.NewProfileClient(handler.profileClientAdress)
-	response, err := profileClient.Get(context.TODO(), &profile.GetRequest{Id: id})
-	*responseProfile = *response
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (handler *ProfileHandler) GetAll(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
