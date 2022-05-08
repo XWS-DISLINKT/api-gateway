@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 
+	connectionsGw "github.com/XWS-DISLINKT/dislinkt/common/proto/connection-service"
 	postGw "github.com/XWS-DISLINKT/dislinkt/common/proto/post-service"
 	profileGw "github.com/XWS-DISLINKT/dislinkt/common/proto/profile-service"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -45,6 +46,13 @@ func (server *Server) initHandlers() {
 	if err != nil {
 		panic(err)
 	}
+
+	connectionsEndpoint := fmt.Sprintf("%s:%s", server.config.ConnectionHost, server.config.ConnectionPort)
+	err = connectionsGw.RegisterConnectionServiceHandlerFromEndpoint(context.TODO(), server.mux, connectionsEndpoint, opts)
+
+	if err != nil {
+		panic(err)
+	}
 }
 
 func (server *Server) initCustomHandlers() {
@@ -54,6 +62,9 @@ func (server *Server) initCustomHandlers() {
 	authEndpoint := fmt.Sprintf("%s:%s", server.config.AuthHost, server.config.AuthPort)
 	authHandler := api.NewAuthHandler(authEndpoint, profileEndpoint)
 	authHandler.Init(server.mux)
+	connectionEndpoint := fmt.Sprintf("%s:%s", server.config.ConnectionHost, server.config.ConnectionPort)
+	connectionsHandler := api.NewConnectionsHandler(connectionEndpoint)
+	connectionsHandler.Init(server.mux)
 }
 
 func (server *Server) Start() {
