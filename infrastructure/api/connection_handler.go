@@ -110,6 +110,7 @@ func (handler *ConnectionsHandler) MakeConnectionRequest(w http.ResponseWriter, 
 	}
 
 	response, err := services.ConnectionsClient(handler.connectionsClientAddress).MakeConnectionRequest(context.TODO(), &request)
+	
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
