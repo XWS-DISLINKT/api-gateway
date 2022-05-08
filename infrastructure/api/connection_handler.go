@@ -32,9 +32,6 @@ func (handler *ConnectionsHandler) Init(mux *runtime.ServeMux) {
 	}
 }
 
-// auth autz za POST i PUT, get requests usernames
-// get connections usernames authz, opciono auth
-
 func (handler *ConnectionsHandler) MakeConnectionWithPublicProfile(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
 	if !services.JWTValid(w, r) {
 		return
@@ -57,6 +54,11 @@ func (handler *ConnectionsHandler) MakeConnectionWithPublicProfile(w http.Respon
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
+	}
+
+	if connectionResponse.Success == false {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("User does not exist!"))
 	}
 
 	response, err := json.Marshal(connectionResponse)
@@ -92,6 +94,11 @@ func (handler *ConnectionsHandler) MakeConnectionRequest(w http.ResponseWriter, 
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
+	}
+
+	if connectionResponse.Success == false {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("User does not exist!"))
 	}
 
 	response, err := json.Marshal(connectionResponse)
@@ -141,7 +148,7 @@ func (handler *ConnectionsHandler) GetConnectionsUsernamesFor(w http.ResponseWri
 	if !services.JWTValid(w, r) {
 		return
 	}
-	
+
 	usernames := make([]string, 0)
 	id := pathParams["id"]
 
