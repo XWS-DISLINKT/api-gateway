@@ -5,6 +5,8 @@ import (
 	cfg "api-gateway/startup/config"
 	"context"
 	"fmt"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"log"
 	"net/http"
 
@@ -12,8 +14,6 @@ import (
 	postGw "github.com/XWS-DISLINKT/dislinkt/common/proto/post-service"
 	profileGw "github.com/XWS-DISLINKT/dislinkt/common/proto/profile-service"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Server struct {
@@ -59,6 +59,9 @@ func (server *Server) initCustomHandlers() {
 	profileEndpoint := fmt.Sprintf("%s:%s", server.config.ProfileHost, server.config.ProfilePort)
 	profileHandler := api.NewProfileHandler(profileEndpoint)
 	profileHandler.Init(server.mux)
+	postEndpoint := fmt.Sprintf("%s:%s", server.config.PostHost, server.config.PostPort)
+	postHandler := api.NewPostHandler(postEndpoint)
+	postHandler.Init(server.mux)
 	authEndpoint := fmt.Sprintf("%s:%s", server.config.AuthHost, server.config.AuthPort)
 	authHandler := api.NewAuthHandler(authEndpoint, profileEndpoint)
 	authHandler.Init(server.mux)
