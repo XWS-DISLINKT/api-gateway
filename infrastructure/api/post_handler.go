@@ -27,9 +27,28 @@ func (handler *PostHandler) Init(mux *runtime.ServeMux) {
 	err = mux.HandlePath("GET", "/post/job", handler.GetAllJobs)
 	err = mux.HandlePath("POST", "/post/job", handler.CreateJob)
 	err = mux.HandlePath("POST", "/post/job/apikey", handler.RegisterApiKey)
+	err = mux.HandlePath("GET", "/post/job/{search}", handler.SearchJobsByPosition)
 	if err != nil {
 		panic(err)
 	}
+}
+
+func (handler *PostHandler) SearchJobsByPosition(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	responseGrpc, err := services.NewPostClient(handler.postClientAddress).SearchJobsByPosition(context.TODO(), &post.SearchJobsByPositionRequest{Search: pathParams["search"]})
+	responseJobs := responseGrpc.Jobs
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	response, err := json.Marshal(responseJobs)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(response)
 }
 
 func (handler *PostHandler) RegisterApiKey(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
