@@ -24,9 +24,80 @@ func (handler *PostHandler) Init(mux *runtime.ServeMux) {
 	err := mux.HandlePath("GET", "/post", handler.GetAll)
 	err = mux.HandlePath("GET", "/post/{id}", handler.Get)
 	err = mux.HandlePath("POST", "/post", handler.Create)
+	err = mux.HandlePath("GET", "/post/job", handler.GetAllJobs)
+	err = mux.HandlePath("POST", "/post/job", handler.CreateJob)
+	err = mux.HandlePath("POST", "/post/job/apikey", handler.RegisterApiKey)
 	if err != nil {
 		panic(err)
 	}
+}
+
+func (handler *PostHandler) RegisterApiKey(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	if !services.JWTValid(w, r) {
+		return
+	}
+	request := post.GetApiKeyRequest{UserId: services.LoggedUserId}
+	serviceResponse, err := services.NewPostClient(handler.postClientAddress).RegisterApiKey(context.TODO(), &request)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	response, err := json.Marshal(serviceResponse)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(response)
+}
+
+func (handler *PostHandler) CreateJob(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	if !services.JWTValid(w, r) {
+		return
+	}
+	request := post.PostJobRequest{}
+	request.UserId = services.LoggedUserId
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	responsePost, err := services.NewPostClient(handler.postClientAddress).PostJob(context.TODO(), &request)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	response, err := json.Marshal(responsePost)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(response)
+}
+
+func (handler *PostHandler) GetAllJobs(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	responseGrpc, err := services.NewPostClient(handler.postClientAddress).GetAllJobs(context.TODO(), &post.GetAllJobsRequest{})
+	responseJobs := responseGrpc.Jobs
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	response, err := json.Marshal(responseJobs)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(response)
 }
 
 func (handler *PostHandler) Get(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
