@@ -188,7 +188,7 @@ func (handler *PostHandler) Create(w http.ResponseWriter, r *http.Request, pathP
 		return
 	}
 
-	request := post.PostRequest{}
+	request := post.PostM{}
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
