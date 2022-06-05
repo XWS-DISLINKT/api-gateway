@@ -29,6 +29,9 @@ func (handler *PostHandler) Init(mux *runtime.ServeMux) {
 	err = mux.HandlePath("POST", "/post/job/apikey", handler.RegisterApiKey)
 	err = mux.HandlePath("GET", "/post/job/{search}", handler.SearchJobsByPosition)
 	err = mux.HandlePath("POST", "/post/job/dislinkt", handler.CreateJobDislinkt)
+	err = mux.HandlePath("POST", "/post/like", handler.Like)
+	err = mux.HandlePath("POST", "/post/dislike", handler.Dislike)
+	err = mux.HandlePath("POST", "/post/comment", handler.Comment)
 	if err != nil {
 		panic(err)
 	}
@@ -192,6 +195,90 @@ func (handler *PostHandler) Create(w http.ResponseWriter, r *http.Request, pathP
 		return
 	}
 	responsePost, err := services.NewPostClient(handler.postClientAddress).Post(context.TODO(), &request)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	response, err := json.Marshal(responsePost)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(response)
+}
+
+func (handler *PostHandler) Like(w http.ResponseWriter, r *http.Request, params map[string]string) {
+	if !services.JWTValid(w, r) {
+		return
+	}
+	request := post.ReactionRequest{}
+	err := json.NewDecoder(r.Body).Decode(&request.Reaction)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	request.Reaction.Username = services.LoggedUserUsername
+	responsePost, err := services.NewPostClient(handler.postClientAddress).LikePost(context.TODO(), &request)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	response, err := json.Marshal(responsePost)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(response)
+}
+
+func (handler *PostHandler) Dislike(w http.ResponseWriter, r *http.Request, params map[string]string) {
+	if !services.JWTValid(w, r) {
+		return
+	}
+	request := post.ReactionRequest{}
+	err := json.NewDecoder(r.Body).Decode(&request.Reaction)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	request.Reaction.Username = services.LoggedUserUsername
+	responsePost, err := services.NewPostClient(handler.postClientAddress).DislikePost(context.TODO(), &request)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	response, err := json.Marshal(responsePost)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(response)
+}
+
+func (handler *PostHandler) Comment(w http.ResponseWriter, r *http.Request, params map[string]string) {
+	if !services.JWTValid(w, r) {
+		return
+	}
+	request := post.CommentRequest{}
+	err := json.NewDecoder(r.Body).Decode(&request.Comment)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	request.Comment.Username = services.LoggedUserUsername
+	responsePost, err := services.NewPostClient(handler.postClientAddress).CommentPost(context.TODO(), &request)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
