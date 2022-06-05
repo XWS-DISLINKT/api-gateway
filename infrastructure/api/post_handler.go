@@ -4,7 +4,10 @@ import (
 	"api-gateway/infrastructure/services"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	post "github.com/XWS-DISLINKT/dislinkt/common/proto/post-service"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -32,6 +35,7 @@ func (handler *PostHandler) Init(mux *runtime.ServeMux) {
 	err = mux.HandlePath("POST", "/post/like", handler.Like)
 	err = mux.HandlePath("POST", "/post/dislike", handler.Dislike)
 	err = mux.HandlePath("POST", "/post/comment", handler.Comment)
+	err = mux.HandlePath("POST", "/post/image", handler.UploadImage)
 	if err != nil {
 		panic(err)
 	}
@@ -293,4 +297,34 @@ func (handler *PostHandler) Comment(w http.ResponseWriter, r *http.Request, para
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(response)
+}
+
+func (handler *PostHandler) UploadImage(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	// left shift 32 << 20 which results in 32*2^20 = 33554432
+	// x << y, results in x*2^y
+	err := r.ParseMultipartForm(32 << 20)
+	if err != nil {
+		return
+	}
+	n := r.Form.Get("name")
+	n = "image1.jpg"
+	// Retrieve the file from form data
+	f, _, err := r.FormFile("file")
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	path := filepath.Join("..", "client-web-app", "dislinkt-client", "src", "assets", "images")
+	_ = os.MkdirAll(path, os.ModePerm)
+	fullPath := path + "/" + n
+	file, err := os.OpenFile(fullPath, os.O_WRONLY|os.O_CREATE, os.ModePerm)
+	if err != nil {
+		return
+	}
+	defer file.Close()
+	// Copy the file to the destination path
+	_, err = io.Copy(file, f)
+	if err != nil {
+		return
+	}
 }
