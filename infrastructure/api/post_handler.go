@@ -306,8 +306,7 @@ func (handler *PostHandler) UploadImage(w http.ResponseWriter, r *http.Request, 
 	if err != nil {
 		return
 	}
-	n := r.Form.Get("name")
-	n = "image1.jpg"
+	n := r.FormValue("fileName")
 	// Retrieve the file from form data
 	f, _, err := r.FormFile("file")
 	if err != nil {
