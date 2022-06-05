@@ -28,9 +28,38 @@ func (handler *PostHandler) Init(mux *runtime.ServeMux) {
 	err = mux.HandlePath("POST", "/post/job", handler.CreateJob)
 	err = mux.HandlePath("POST", "/post/job/apikey", handler.RegisterApiKey)
 	err = mux.HandlePath("GET", "/post/job/{search}", handler.SearchJobsByPosition)
+	err = mux.HandlePath("POST", "/post/job/dislinkt", handler.CreateJobDislinkt)
 	if err != nil {
 		panic(err)
 	}
+}
+
+func (handler *PostHandler) CreateJobDislinkt(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	if !services.JWTValid(w, r) {
+		return
+	}
+	request := post.PostJobDislinktRequest{}
+	err := json.NewDecoder(r.Body).Decode(&request.Job)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	request.Job.UserId = services.LoggedUserId
+	responsePost, err := services.NewPostClient(handler.postClientAddress).PostJobDislinkt(context.TODO(), &request)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	response, err := json.Marshal(responsePost)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(response)
 }
 
 func (handler *PostHandler) SearchJobsByPosition(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
@@ -74,11 +103,7 @@ func (handler *PostHandler) RegisterApiKey(w http.ResponseWriter, r *http.Reques
 }
 
 func (handler *PostHandler) CreateJob(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
-	if !services.JWTValid(w, r) {
-		return
-	}
 	request := post.PostJobRequest{}
-	request.UserId = services.LoggedUserId
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
