@@ -33,9 +33,6 @@ func (handler *ConnectionsHandler) Init(mux *runtime.ServeMux) {
 	}
 }
 
-// auth autz za POST i PUT, get requests usernames
-// get connections usernames authz, opciono auth
-
 func (handler *ConnectionsHandler) InsertUser(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
 	user := connection.User{}
 	err := json.NewDecoder(r.Body).Decode(&user)
@@ -110,7 +107,7 @@ func (handler *ConnectionsHandler) MakeConnectionRequest(w http.ResponseWriter, 
 	}
 
 	response, err := services.ConnectionsClient(handler.connectionsClientAddress).MakeConnectionRequest(context.TODO(), &request)
-	
+
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

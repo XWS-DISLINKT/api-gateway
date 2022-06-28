@@ -27,9 +27,15 @@ func (handler *AuthHandler) Init(mux *runtime.ServeMux) {
 }
 
 func (handler *AuthHandler) Login(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 	http.Redirect(w, r, "http://"+handler.authClientAdress+"/login", 307)
 }
 
 func (handler *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
 	http.Redirect(w, r, "http://"+handler.authClientAdress+"/refresh", 307)
 }
