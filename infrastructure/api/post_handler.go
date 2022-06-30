@@ -4,6 +4,7 @@ import (
 	"api-gateway/infrastructure/services"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -313,7 +314,15 @@ func (handler *PostHandler) UploadImage(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 	defer f.Close()
-	path := filepath.Join("..", "client-web-app", "dislinkt-client", "src", "assets", "images")
+	path := ""
+	if _, err := os.Stat("/.dockerenv"); err == nil {
+		fmt.Println("docker")
+		path = filepath.Join("..", "usr", "src", "app", "assets", "images")
+	} else {
+		fmt.Println("local")
+		path = filepath.Join("..", "client-web-app", "dislinkt-client", "src", "assets", "images")
+	}
+
 	_ = os.MkdirAll(path, os.ModePerm)
 	fullPath := path + "/" + n
 	file, err := os.OpenFile(fullPath, os.O_WRONLY|os.O_CREATE, os.ModePerm)
