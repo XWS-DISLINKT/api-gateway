@@ -27,6 +27,7 @@ func (handler *ConnectionsHandler) Init(mux *runtime.ServeMux) {
 	err = mux.HandlePath("GET", "/connection/usernames/{id}", handler.GetConnectionsUsernamesFor)
 	err = mux.HandlePath("GET", "/connection/requests/{id}", handler.GetRequestsUsernamesFor)
 	err = mux.HandlePath("POST", "/connection/user", handler.InsertUser)
+	err = mux.HandlePath("POST", "/connection/block", handler.BlockConnection)
 
 	if err != nil {
 		panic(err)
@@ -141,6 +142,38 @@ func (handler *ConnectionsHandler) ApproveConnectionRequest(w http.ResponseWrite
 	}
 
 	connectionResponse, err := services.ConnectionsClient(handler.connectionsClientAddress).ApproveConnectionRequest(context.TODO(), &request)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if !connectionResponse.Success || err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (handler *ConnectionsHandler) BlockConnection(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	if !services.JWTValid(w, r) {
+		return
+	}
+
+	request := connection.ConnectionBody{}
+
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if request.GetRequestSenderId() != services.LoggedUserId {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	connectionResponse, err := services.ConnectionsClient(handler.connectionsClientAddress).BlockConnection(context.TODO(), &request)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
