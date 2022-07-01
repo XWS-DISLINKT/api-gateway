@@ -28,6 +28,7 @@ func (handler *ConnectionsHandler) Init(mux *runtime.ServeMux) {
 	err = mux.HandlePath("GET", "/connection/requests/{id}", handler.GetRequestsUsernamesFor)
 	err = mux.HandlePath("POST", "/connection/user", handler.InsertUser)
 	err = mux.HandlePath("POST", "/connection/block", handler.BlockConnection)
+	err = mux.HandlePath("GET", "/connection/blocked/usernames/{id}", handler.GetBlockedConnectionsUsernames)
 
 	if err != nil {
 		panic(err)
@@ -247,4 +248,35 @@ func (handler *ConnectionsHandler) GetRequestsUsernamesFor(w http.ResponseWriter
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(resp)
+}
+
+func (handler *ConnectionsHandler) GetBlockedConnectionsUsernames(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	if !services.JWTValid(w, r) {
+		return
+	}
+
+	usernames := make([]string, 0)
+	id := pathParams["id"]
+
+	if id != services.LoggedUserId {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	response, err := services.ConnectionsClient(handler.connectionsClientAddress).GetBlockedConnectionsUsernames(context.TODO(),
+		&connection.GetConnectionsUsernamesRequest{Id: id})
+
+	if response.Usernames != nil {
+		usernames = response.Usernames
+	}
+
+	res, err := json.Marshal(usernames)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(res)
 }
