@@ -29,6 +29,7 @@ func (handler *ConnectionsHandler) Init(mux *runtime.ServeMux) {
 	err = mux.HandlePath("POST", "/connection/user", handler.InsertUser)
 	err = mux.HandlePath("POST", "/connection/block", handler.BlockConnection)
 	err = mux.HandlePath("GET", "/connection/blocked/usernames/{id}", handler.GetBlockedConnectionsUsernames)
+	err = mux.HandlePath("PUT", "/connection/user", handler.UpdateUser)
 
 	if err != nil {
 		panic(err)
@@ -44,6 +45,28 @@ func (handler *ConnectionsHandler) InsertUser(w http.ResponseWriter, r *http.Req
 	}
 
 	response, err := services.ConnectionsClient(handler.connectionsClientAddress).InsertUser(context.TODO(), &user)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if !response.Success || err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (handler *ConnectionsHandler) UpdateUser(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	user := connection.User{}
+	err := json.NewDecoder(r.Body).Decode(&user)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	response, err := services.ConnectionsClient(handler.connectionsClientAddress).UpdateUser(context.TODO(), &user)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
