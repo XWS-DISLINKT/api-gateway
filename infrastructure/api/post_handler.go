@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	tracer "github.com/XWS-DISLINKT/dislinkt/tracer"
+	"github.com/opentracing/opentracing-go"
 	"io"
 	"net/http"
 	"os"
@@ -16,11 +18,13 @@ import (
 
 type PostHandler struct {
 	postClientAddress string
+	tracer            opentracing.Tracer
 }
 
-func NewPostHandler(postClientAddress string) Handler {
+func NewPostHandler(postClientAddress string, tracer opentracing.Tracer) Handler {
 	return &PostHandler{
 		postClientAddress: postClientAddress,
+		tracer:            tracer,
 	}
 }
 
@@ -46,6 +50,10 @@ func (handler *PostHandler) CreateJobDislinkt(w http.ResponseWriter, r *http.Req
 	if !services.JWTValid(w, r) {
 		return
 	}
+
+	span := tracer.StartSpanFromRequest("CreateJobDislinktHandler", handler.tracer, r)
+	defer span.Finish()
+
 	request := post.PostJobDislinktRequest{}
 	err := json.NewDecoder(r.Body).Decode(&request.Job)
 	if err != nil {
@@ -71,6 +79,9 @@ func (handler *PostHandler) CreateJobDislinkt(w http.ResponseWriter, r *http.Req
 }
 
 func (handler *PostHandler) SearchJobsByPosition(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	span := tracer.StartSpanFromRequest("SearchJobsByPositionHandler", handler.tracer, r)
+	defer span.Finish()
+
 	responseGrpc, err := services.NewPostClient(handler.postClientAddress).SearchJobsByPosition(context.TODO(), &post.SearchJobsByPositionRequest{Search: pathParams["search"]})
 	responseJobs := responseGrpc.Jobs
 	if err != nil {
@@ -92,6 +103,10 @@ func (handler *PostHandler) RegisterApiKey(w http.ResponseWriter, r *http.Reques
 	if !services.JWTValid(w, r) {
 		return
 	}
+
+	span := tracer.StartSpanFromRequest("RegisterApiKeyHandler", handler.tracer, r)
+	defer span.Finish()
+
 	request := post.GetApiKeyRequest{UserId: services.LoggedUserId}
 	serviceResponse, err := services.NewPostClient(handler.postClientAddress).RegisterApiKey(context.TODO(), &request)
 	if err != nil {
@@ -111,6 +126,9 @@ func (handler *PostHandler) RegisterApiKey(w http.ResponseWriter, r *http.Reques
 }
 
 func (handler *PostHandler) CreateJob(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	span := tracer.StartSpanFromRequest("CreateJobHandler", handler.tracer, r)
+	defer span.Finish()
+
 	request := post.PostJobRequest{}
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
@@ -135,6 +153,9 @@ func (handler *PostHandler) CreateJob(w http.ResponseWriter, r *http.Request, pa
 }
 
 func (handler *PostHandler) GetAllJobs(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	span := tracer.StartSpanFromRequest("GetAllJobsHandler", handler.tracer, r)
+	defer span.Finish()
+
 	responseGrpc, err := services.NewPostClient(handler.postClientAddress).GetAllJobs(context.TODO(), &post.GetAllJobsRequest{})
 	responseJobs := responseGrpc.Jobs
 	if err != nil {
@@ -153,6 +174,9 @@ func (handler *PostHandler) GetAllJobs(w http.ResponseWriter, r *http.Request, p
 }
 
 func (handler *PostHandler) Get(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	span := tracer.StartSpanFromRequest("GetPostHandler", handler.tracer, r)
+	defer span.Finish()
+
 	responseGrpc, err := services.NewPostClient(handler.postClientAddress).Get(context.TODO(), &post.GetRequest{Id: pathParams["id"]})
 	responsePost := responseGrpc.Post
 	if err != nil {
@@ -171,6 +195,9 @@ func (handler *PostHandler) Get(w http.ResponseWriter, r *http.Request, pathPara
 }
 
 func (handler *PostHandler) GetAll(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	span := tracer.StartSpanFromRequest("GetAllPostsHandler", handler.tracer, r)
+	defer span.Finish()
+
 	responseGrpc, err := services.NewPostClient(handler.postClientAddress).GetAll(context.TODO(), &post.GetAllRequest{})
 	responsePost := responseGrpc.Posts
 	if err != nil {
@@ -192,6 +219,9 @@ func (handler *PostHandler) Create(w http.ResponseWriter, r *http.Request, pathP
 	if !services.JWTValid(w, r) {
 		return
 	}
+
+	span := tracer.StartSpanFromRequest("CreatePostHandler", handler.tracer, r)
+	defer span.Finish()
 
 	request := post.PostM{}
 	err := json.NewDecoder(r.Body).Decode(&request)
@@ -220,6 +250,10 @@ func (handler *PostHandler) Like(w http.ResponseWriter, r *http.Request, params 
 	if !services.JWTValid(w, r) {
 		return
 	}
+
+	span := tracer.StartSpanFromRequest("LikePostHandler", handler.tracer, r)
+	defer span.Finish()
+
 	request := post.ReactionRequest{}
 	err := json.NewDecoder(r.Body).Decode(&request.Reaction)
 	if err != nil {
@@ -248,6 +282,10 @@ func (handler *PostHandler) Dislike(w http.ResponseWriter, r *http.Request, para
 	if !services.JWTValid(w, r) {
 		return
 	}
+
+	span := tracer.StartSpanFromRequest("DislikePostHandler", handler.tracer, r)
+	defer span.Finish()
+
 	request := post.ReactionRequest{}
 	err := json.NewDecoder(r.Body).Decode(&request.Reaction)
 	if err != nil {
@@ -276,6 +314,10 @@ func (handler *PostHandler) Comment(w http.ResponseWriter, r *http.Request, para
 	if !services.JWTValid(w, r) {
 		return
 	}
+
+	span := tracer.StartSpanFromRequest("CommentPostHandler", handler.tracer, r)
+	defer span.Finish()
+
 	request := post.CommentRequest{}
 	err := json.NewDecoder(r.Body).Decode(&request.Comment)
 	if err != nil {
@@ -301,6 +343,8 @@ func (handler *PostHandler) Comment(w http.ResponseWriter, r *http.Request, para
 }
 
 func (handler *PostHandler) UploadImage(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	span := tracer.StartSpanFromRequest("ImagePostHandler", handler.tracer, r)
+	defer span.Finish()
 	// left shift 32 << 20 which results in 32*2^20 = 33554432
 	// x << y, results in x*2^y
 	err := r.ParseMultipartForm(32 << 20)

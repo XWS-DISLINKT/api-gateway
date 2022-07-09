@@ -4,7 +4,9 @@ import (
 	"api-gateway/infrastructure/services"
 	"context"
 	"encoding/json"
+	tracer "github.com/XWS-DISLINKT/dislinkt/tracer"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/opentracing/opentracing-go"
 	"net/http"
 
 	connection "github.com/XWS-DISLINKT/dislinkt/common/proto/connection-service"
@@ -12,11 +14,13 @@ import (
 
 type ConnectionsHandler struct {
 	connectionsClientAddress string
+	tracer                   opentracing.Tracer
 }
 
-func NewConnectionsHandler(connectionsClientAddress string) Handler {
+func NewConnectionsHandler(connectionsClientAddress string, tracer opentracing.Tracer) Handler {
 	return &ConnectionsHandler{
 		connectionsClientAddress: connectionsClientAddress,
+		tracer:                   tracer,
 	}
 }
 
@@ -37,6 +41,9 @@ func (handler *ConnectionsHandler) Init(mux *runtime.ServeMux) {
 }
 
 func (handler *ConnectionsHandler) InsertUser(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	span := tracer.StartSpanFromRequest("InsertUserHandler", handler.tracer, r)
+	defer span.Finish()
+
 	user := connection.User{}
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
@@ -59,6 +66,9 @@ func (handler *ConnectionsHandler) InsertUser(w http.ResponseWriter, r *http.Req
 }
 
 func (handler *ConnectionsHandler) UpdateUser(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	span := tracer.StartSpanFromRequest("UpdateUserHandler", handler.tracer, r)
+	defer span.Finish()
+
 	user := connection.User{}
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
@@ -84,6 +94,9 @@ func (handler *ConnectionsHandler) MakeConnectionWithPublicProfile(w http.Respon
 	if !services.JWTValid(w, r) {
 		return
 	}
+
+	span := tracer.StartSpanFromRequest("MakeConnectionWithPublicProfileHandler", handler.tracer, r)
+	defer span.Finish()
 
 	request := connection.ConnectionBody{}
 
@@ -117,6 +130,9 @@ func (handler *ConnectionsHandler) MakeConnectionRequest(w http.ResponseWriter, 
 	if !services.JWTValid(w, r) {
 		return
 	}
+
+	span := tracer.StartSpanFromRequest("MakeConnectionRequestHandler", handler.tracer, r)
+	defer span.Finish()
 
 	request := connection.ConnectionBody{}
 
@@ -152,6 +168,9 @@ func (handler *ConnectionsHandler) ApproveConnectionRequest(w http.ResponseWrite
 		return
 	}
 
+	span := tracer.StartSpanFromRequest("ApproveConnectionRequestHandler", handler.tracer, r)
+	defer span.Finish()
+
 	request := connection.ConnectionBody{}
 
 	err := json.NewDecoder(r.Body).Decode(&request)
@@ -183,6 +202,9 @@ func (handler *ConnectionsHandler) BlockConnection(w http.ResponseWriter, r *htt
 	if !services.JWTValid(w, r) {
 		return
 	}
+
+	span := tracer.StartSpanFromRequest("BlockConnectionHandler", handler.tracer, r)
+	defer span.Finish()
 
 	request := connection.ConnectionBody{}
 
@@ -216,6 +238,9 @@ func (handler *ConnectionsHandler) GetConnectionsUsernamesFor(w http.ResponseWri
 		return
 	}
 
+	span := tracer.StartSpanFromRequest("GetConnectionsUsernamesForHandler", handler.tracer, r)
+	defer span.Finish()
+
 	usernames := make([]string, 0)
 	id := pathParams["id"]
 
@@ -247,6 +272,9 @@ func (handler *ConnectionsHandler) GetRequestsUsernamesFor(w http.ResponseWriter
 		return
 	}
 
+	span := tracer.StartSpanFromRequest("GetRequestsUsernamesForHandler", handler.tracer, r)
+	defer span.Finish()
+
 	usernames := make([]string, 0)
 	id := pathParams["id"]
 
@@ -277,6 +305,9 @@ func (handler *ConnectionsHandler) GetBlockedConnectionsUsernames(w http.Respons
 	if !services.JWTValid(w, r) {
 		return
 	}
+
+	span := tracer.StartSpanFromRequest("GetBlockedConnectionsUsernamesHandler", handler.tracer, r)
+	defer span.Finish()
 
 	usernames := make([]string, 0)
 	id := pathParams["id"]

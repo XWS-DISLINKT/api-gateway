@@ -4,6 +4,8 @@ import (
 	"api-gateway/infrastructure/services"
 	"context"
 	"encoding/json"
+	tracer "github.com/XWS-DISLINKT/dislinkt/tracer"
+	"github.com/opentracing/opentracing-go"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"net/http"
 
@@ -13,11 +15,13 @@ import (
 
 type ProfileHandler struct {
 	profileClientAdress string
+	tracer              opentracing.Tracer
 }
 
-func NewProfileHandler(profileClientAdress string) Handler {
+func NewProfileHandler(profileClientAdress string, tracer opentracing.Tracer) Handler {
 	return &ProfileHandler{
 		profileClientAdress: profileClientAdress,
+		tracer:              tracer,
 	}
 }
 
@@ -35,6 +39,9 @@ func (handler *ProfileHandler) Init(mux *runtime.ServeMux) {
 }
 
 func (handler *ProfileHandler) Get(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	span := tracer.StartSpanFromRequest("GetProfileHandler", handler.tracer, r)
+	defer span.Finish()
+
 	id := pathParams["id"]
 	profileClient := services.NewProfileClient(handler.profileClientAdress)
 	profile, err := profileClient.Get(context.TODO(), &profile.GetRequest{Id: id})
@@ -61,6 +68,9 @@ func (handler *ProfileHandler) Get(w http.ResponseWriter, r *http.Request, pathP
 	w.Write(response)
 }
 func (handler *ProfileHandler) GetChatMessages(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	span := tracer.StartSpanFromRequest("GetChatMessagesHandler", handler.tracer, r)
+	defer span.Finish()
+
 	senderId := pathParams["senderId"]
 	receiverId := pathParams["receiverId"]
 	messages := make([](*profile.Message), 0)
@@ -83,6 +93,9 @@ func (handler *ProfileHandler) GetAll(w http.ResponseWriter, r *http.Request, pa
 	//if !services.JWTValid(w, r) {
 	//	return
 	//}
+	span := tracer.StartSpanFromRequest("GetAllProfilesHandler", handler.tracer, r)
+	defer span.Finish()
+
 	profiles := make([](*profile.Profile), 0)
 
 	handler.addProfiles(&profiles)
@@ -121,6 +134,9 @@ func (handler *ProfileHandler) addMessages(messages *[]*profile.Message, senderI
 }
 
 func (handler *ProfileHandler) Create(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	span := tracer.StartSpanFromRequest("CreateProfileHandler", handler.tracer, r)
+	defer span.Finish()
+
 	request := profile.NewProfile{}
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
@@ -145,6 +161,9 @@ func (handler *ProfileHandler) Create(w http.ResponseWriter, r *http.Request, pa
 }
 
 func (handler *ProfileHandler) SendMessage(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	span := tracer.StartSpanFromRequest("SendMessageHandler", handler.tracer, r)
+	defer span.Finish()
+
 	newMessage := profile.Message{}
 	err := json.NewDecoder(r.Body).Decode(&newMessage)
 	if err != nil {
@@ -173,6 +192,10 @@ func (handler *ProfileHandler) Update(w http.ResponseWriter, r *http.Request, pa
 	if !services.JWTValid(w, r) {
 		return
 	}
+
+	span := tracer.StartSpanFromRequest("UpdateProfileHandler", handler.tracer, r)
+	defer span.Finish()
+
 	request := profile.Profile{}
 	err := json.NewDecoder(r.Body).Decode(&request)
 
@@ -207,6 +230,9 @@ func (handler *ProfileHandler) Update(w http.ResponseWriter, r *http.Request, pa
 }
 
 func (handler *ProfileHandler) GetByName(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	span := tracer.StartSpanFromRequest("GetByNameHandler", handler.tracer, r)
+	defer span.Finish()
+
 	name := pathParams["name"]
 	request := profile.GetByNameRequest{Name: name}
 	responseProfiles, err := services.NewProfileClient(handler.profileClientAdress).GetByName(context.TODO(), &request)
