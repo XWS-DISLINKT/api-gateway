@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	tracer "github.com/XWS-DISLINKT/dislinkt/tracer"
 	"github.com/opentracing/opentracing-go"
+	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"net/http"
 
@@ -16,12 +17,18 @@ import (
 type ProfileHandler struct {
 	profileClientAdress string
 	tracer              opentracing.Tracer
+	allRequests         prometheus.Counter
+	okRequests          prometheus.Counter
+	badRequests         prometheus.Counter
 }
 
-func NewProfileHandler(profileClientAdress string, tracer opentracing.Tracer) Handler {
+func NewProfileHandler(profileClientAdress string, tracer opentracing.Tracer, allRequests prometheus.Counter, okRequests prometheus.Counter, badRequests prometheus.Counter) Handler {
 	return &ProfileHandler{
 		profileClientAdress: profileClientAdress,
 		tracer:              tracer,
+		allRequests:         allRequests,
+		okRequests:          okRequests,
+		badRequests:         badRequests,
 	}
 }
 
@@ -39,6 +46,8 @@ func (handler *ProfileHandler) Init(mux *runtime.ServeMux) {
 }
 
 func (handler *ProfileHandler) Get(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	handler.allRequests.Inc()
+
 	span := tracer.StartSpanFromRequest("GetProfileHandler", handler.tracer, r)
 	defer span.Finish()
 
@@ -47,11 +56,13 @@ func (handler *ProfileHandler) Get(w http.ResponseWriter, r *http.Request, pathP
 	profile, err := profileClient.Get(context.TODO(), &profile.GetRequest{Id: id})
 
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	if profile.Id == "" {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -59,15 +70,20 @@ func (handler *ProfileHandler) Get(w http.ResponseWriter, r *http.Request, pathP
 	response, err := json.Marshal(profile)
 
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	handler.okRequests.Inc()
 	w.WriteHeader(http.StatusOK)
 	w.Write(response)
 }
+
 func (handler *ProfileHandler) GetChatMessages(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	handler.allRequests.Inc()
+
 	span := tracer.StartSpanFromRequest("GetChatMessagesHandler", handler.tracer, r)
 	defer span.Finish()
 
@@ -79,17 +95,21 @@ func (handler *ProfileHandler) GetChatMessages(w http.ResponseWriter, r *http.Re
 
 	response, err := json.Marshal(messages)
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	handler.okRequests.Inc()
 	w.WriteHeader(http.StatusOK)
 	w.Write(response)
 
 }
 
 func (handler *ProfileHandler) GetAll(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	handler.allRequests.Inc()
+
 	//if !services.JWTValid(w, r) {
 	//	return
 	//}
@@ -102,10 +122,12 @@ func (handler *ProfileHandler) GetAll(w http.ResponseWriter, r *http.Request, pa
 
 	response, err := json.Marshal(profiles)
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	handler.okRequests.Inc()
 	w.WriteHeader(http.StatusOK)
 	w.Write(response)
 }
@@ -134,17 +156,21 @@ func (handler *ProfileHandler) addMessages(messages *[]*profile.Message, senderI
 }
 
 func (handler *ProfileHandler) Create(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	handler.allRequests.Inc()
+
 	span := tracer.StartSpanFromRequest("CreateProfileHandler", handler.tracer, r)
 	defer span.Finish()
 
 	request := profile.NewProfile{}
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	responseProfile, err := services.NewProfileClient(handler.profileClientAdress).Create(context.TODO(), &request)
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -152,26 +178,32 @@ func (handler *ProfileHandler) Create(w http.ResponseWriter, r *http.Request, pa
 	response, err := json.Marshal(responseProfile)
 
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	handler.okRequests.Inc()
 	w.WriteHeader(http.StatusOK)
 	w.Write(response)
 }
 
 func (handler *ProfileHandler) SendMessage(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	handler.allRequests.Inc()
+
 	span := tracer.StartSpanFromRequest("SendMessageHandler", handler.tracer, r)
 	defer span.Finish()
 
 	newMessage := profile.Message{}
 	err := json.NewDecoder(r.Body).Decode(&newMessage)
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	responseMessage, err := services.NewProfileClient(handler.profileClientAdress).SendMessage(context.TODO(), &newMessage)
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -179,16 +211,20 @@ func (handler *ProfileHandler) SendMessage(w http.ResponseWriter, r *http.Reques
 	response, err := json.Marshal(responseMessage)
 
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	handler.okRequests.Inc()
 	w.WriteHeader(http.StatusCreated)
 	w.Write(response)
 }
 
 func (handler *ProfileHandler) Update(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	handler.allRequests.Inc()
+
 	if !services.JWTValid(w, r) {
 		return
 	}
@@ -200,6 +236,7 @@ func (handler *ProfileHandler) Update(w http.ResponseWriter, r *http.Request, pa
 	err := json.NewDecoder(r.Body).Decode(&request)
 
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -207,6 +244,7 @@ func (handler *ProfileHandler) Update(w http.ResponseWriter, r *http.Request, pa
 	request.Id = pathParams["id"]
 
 	if request.Id != services.LoggedUserId {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -214,6 +252,7 @@ func (handler *ProfileHandler) Update(w http.ResponseWriter, r *http.Request, pa
 	responseProfile, err := services.NewProfileClient(handler.profileClientAdress).Update(context.TODO(), &request)
 
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -221,15 +260,19 @@ func (handler *ProfileHandler) Update(w http.ResponseWriter, r *http.Request, pa
 	response, err := json.Marshal(responseProfile)
 
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	handler.okRequests.Inc()
 	w.WriteHeader(http.StatusOK)
 	w.Write(response)
 }
 
 func (handler *ProfileHandler) GetByName(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	handler.allRequests.Inc()
+
 	span := tracer.StartSpanFromRequest("GetByNameHandler", handler.tracer, r)
 	defer span.Finish()
 
@@ -237,6 +280,7 @@ func (handler *ProfileHandler) GetByName(w http.ResponseWriter, r *http.Request,
 	request := profile.GetByNameRequest{Name: name}
 	responseProfiles, err := services.NewProfileClient(handler.profileClientAdress).GetByName(context.TODO(), &request)
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -244,10 +288,12 @@ func (handler *ProfileHandler) GetByName(w http.ResponseWriter, r *http.Request,
 	response, err := json.Marshal(responseProfiles)
 
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	handler.okRequests.Inc()
 	w.WriteHeader(http.StatusOK)
 	w.Write(response)
 }

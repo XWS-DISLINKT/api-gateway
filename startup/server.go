@@ -8,6 +8,8 @@ import (
 	tracer "github.com/XWS-DISLINKT/dislinkt/tracer"
 	"github.com/gorilla/handlers"
 	"github.com/opentracing/opentracing-go"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"io"
@@ -31,6 +33,9 @@ type Server struct {
 	connectionCloser io.Closer
 	authTracer       opentracing.Tracer
 	authCloser       io.Closer
+	allRequests      prometheus.Counter
+	okRequests       prometheus.Counter
+	badRequests      prometheus.Counter
 }
 
 func NewServer(config *cfg.Config) *Server {
@@ -42,6 +47,19 @@ func NewServer(config *cfg.Config) *Server {
 	opentracing.SetGlobalTracer(connectionTracer)
 	authTracer, authCloser := tracer.Init("auth_service")
 	opentracing.SetGlobalTracer(authTracer)
+
+	allRequests := promauto.NewCounter(prometheus.CounterOpts{
+		Name: "http_request_total",
+		Help: "The total number of http requests",
+	})
+	okRequests := promauto.NewCounter(prometheus.CounterOpts{
+		Name: "http_ok_request_total",
+		Help: "The total number of ok http requests",
+	})
+	badRequests := promauto.NewCounter(prometheus.CounterOpts{
+		Name: "http_bad_request_total",
+		Help: "The total number of bad http requests",
+	})
 	server := &Server{
 		config:           config,
 		mux:              runtime.NewServeMux(),
@@ -53,6 +71,9 @@ func NewServer(config *cfg.Config) *Server {
 		connectionCloser: connectionCloser,
 		authTracer:       authTracer,
 		authCloser:       authCloser,
+		allRequests:      allRequests,
+		okRequests:       okRequests,
+		badRequests:      badRequests,
 	}
 	server.initHandlers()
 	server.initCustomHandlers()
@@ -85,16 +106,16 @@ func (server *Server) initHandlers() {
 
 func (server *Server) initCustomHandlers() {
 	profileEndpoint := fmt.Sprintf("%s:%s", server.config.ProfileHost, server.config.ProfilePort)
-	profileHandler := api.NewProfileHandler(profileEndpoint, server.profileTracer)
+	profileHandler := api.NewProfileHandler(profileEndpoint, server.profileTracer, server.allRequests, server.okRequests, server.badRequests)
 	profileHandler.Init(server.mux)
 	postEndpoint := fmt.Sprintf("%s:%s", server.config.PostHost, server.config.PostPort)
-	postHandler := api.NewPostHandler(postEndpoint, server.postTracer)
+	postHandler := api.NewPostHandler(postEndpoint, server.postTracer, server.allRequests, server.okRequests, server.badRequests)
 	postHandler.Init(server.mux)
 	authEndpoint := fmt.Sprintf("%s:%s", server.config.AuthHost, server.config.AuthPort)
-	authHandler := api.NewAuthHandler(authEndpoint, profileEndpoint, server.authTracer)
+	authHandler := api.NewAuthHandler(authEndpoint, profileEndpoint, server.authTracer, server.allRequests, server.okRequests, server.badRequests)
 	authHandler.Init(server.mux)
 	connectionEndpoint := fmt.Sprintf("%s:%s", server.config.ConnectionHost, server.config.ConnectionPort)
-	connectionsHandler := api.NewConnectionsHandler(connectionEndpoint, server.connectionTracer)
+	connectionsHandler := api.NewConnectionsHandler(connectionEndpoint, server.connectionTracer, server.allRequests, server.okRequests, server.badRequests)
 	connectionsHandler.Init(server.mux)
 }
 

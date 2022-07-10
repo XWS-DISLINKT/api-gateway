@@ -7,6 +7,8 @@ import (
 	"fmt"
 	tracer "github.com/XWS-DISLINKT/dislinkt/tracer"
 	"github.com/opentracing/opentracing-go"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"io"
 	"net/http"
 	"os"
@@ -19,12 +21,19 @@ import (
 type PostHandler struct {
 	postClientAddress string
 	tracer            opentracing.Tracer
+	allRequests       prometheus.Counter
+	okRequests        prometheus.Counter
+	badRequests       prometheus.Counter
 }
 
-func NewPostHandler(postClientAddress string, tracer opentracing.Tracer) Handler {
+func NewPostHandler(postClientAddress string, tracer opentracing.Tracer, allRequests prometheus.Counter, okRequests prometheus.Counter, badRequests prometheus.Counter) Handler {
+
 	return &PostHandler{
 		postClientAddress: postClientAddress,
 		tracer:            tracer,
+		allRequests:       allRequests,
+		okRequests:        okRequests,
+		badRequests:       badRequests,
 	}
 }
 
@@ -41,12 +50,19 @@ func (handler *PostHandler) Init(mux *runtime.ServeMux) {
 	err = mux.HandlePath("POST", "/post/dislike", handler.Dislike)
 	err = mux.HandlePath("POST", "/post/comment", handler.Comment)
 	err = mux.HandlePath("POST", "/post/image", handler.UploadImage)
+	err = mux.HandlePath("GET", "/actuator/prometheus", handler.PrometheusHandler)
 	if err != nil {
 		panic(err)
 	}
 }
 
+func (handler *PostHandler) PrometheusHandler(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	promhttp.Handler().ServeHTTP(w, r)
+}
+
 func (handler *PostHandler) CreateJobDislinkt(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	handler.allRequests.Inc()
+
 	if !services.JWTValid(w, r) {
 		return
 	}
@@ -57,12 +73,14 @@ func (handler *PostHandler) CreateJobDislinkt(w http.ResponseWriter, r *http.Req
 	request := post.PostJobDislinktRequest{}
 	err := json.NewDecoder(r.Body).Decode(&request.Job)
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	request.Job.UserId = services.LoggedUserId
 	responsePost, err := services.NewPostClient(handler.postClientAddress).PostJobDislinkt(context.TODO(), &request)
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -70,36 +88,45 @@ func (handler *PostHandler) CreateJobDislinkt(w http.ResponseWriter, r *http.Req
 	response, err := json.Marshal(responsePost)
 
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	handler.okRequests.Inc()
 	w.WriteHeader(http.StatusOK)
 	w.Write(response)
 }
 
 func (handler *PostHandler) SearchJobsByPosition(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	handler.allRequests.Inc()
+
 	span := tracer.StartSpanFromRequest("SearchJobsByPositionHandler", handler.tracer, r)
 	defer span.Finish()
 
 	responseGrpc, err := services.NewPostClient(handler.postClientAddress).SearchJobsByPosition(context.TODO(), &post.SearchJobsByPositionRequest{Search: pathParams["search"]})
 	responseJobs := responseGrpc.Jobs
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	response, err := json.Marshal(responseJobs)
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	handler.okRequests.Inc()
 	w.WriteHeader(http.StatusOK)
 	w.Write(response)
 }
 
 func (handler *PostHandler) RegisterApiKey(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	handler.allRequests.Inc()
+
 	if !services.JWTValid(w, r) {
 		return
 	}
@@ -110,6 +137,7 @@ func (handler *PostHandler) RegisterApiKey(w http.ResponseWriter, r *http.Reques
 	request := post.GetApiKeyRequest{UserId: services.LoggedUserId}
 	serviceResponse, err := services.NewPostClient(handler.postClientAddress).RegisterApiKey(context.TODO(), &request)
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -117,26 +145,32 @@ func (handler *PostHandler) RegisterApiKey(w http.ResponseWriter, r *http.Reques
 	response, err := json.Marshal(serviceResponse)
 
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	handler.okRequests.Inc()
 	w.WriteHeader(http.StatusOK)
 	w.Write(response)
 }
 
 func (handler *PostHandler) CreateJob(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	handler.allRequests.Inc()
+
 	span := tracer.StartSpanFromRequest("CreateJobHandler", handler.tracer, r)
 	defer span.Finish()
 
 	request := post.PostJobRequest{}
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	responsePost, err := services.NewPostClient(handler.postClientAddress).PostJob(context.TODO(), &request)
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -144,78 +178,97 @@ func (handler *PostHandler) CreateJob(w http.ResponseWriter, r *http.Request, pa
 	response, err := json.Marshal(responsePost)
 
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	handler.okRequests.Inc()
 	w.WriteHeader(http.StatusOK)
 	w.Write(response)
 }
 
 func (handler *PostHandler) GetAllJobs(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	handler.allRequests.Inc()
+
 	span := tracer.StartSpanFromRequest("GetAllJobsHandler", handler.tracer, r)
 	defer span.Finish()
 
 	responseGrpc, err := services.NewPostClient(handler.postClientAddress).GetAllJobs(context.TODO(), &post.GetAllJobsRequest{})
 	responseJobs := responseGrpc.Jobs
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	response, err := json.Marshal(responseJobs)
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	handler.okRequests.Inc()
 	w.WriteHeader(http.StatusOK)
 	w.Write(response)
 }
 
 func (handler *PostHandler) Get(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	handler.allRequests.Inc()
+
 	span := tracer.StartSpanFromRequest("GetPostHandler", handler.tracer, r)
 	defer span.Finish()
 
 	responseGrpc, err := services.NewPostClient(handler.postClientAddress).Get(context.TODO(), &post.GetRequest{Id: pathParams["id"]})
 	responsePost := responseGrpc.Post
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	response, err := json.Marshal(responsePost)
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	handler.okRequests.Inc()
 	w.WriteHeader(http.StatusOK)
 	w.Write(response)
 }
 
 func (handler *PostHandler) GetAll(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	handler.allRequests.Inc()
+
 	span := tracer.StartSpanFromRequest("GetAllPostsHandler", handler.tracer, r)
 	defer span.Finish()
 
 	responseGrpc, err := services.NewPostClient(handler.postClientAddress).GetAll(context.TODO(), &post.GetAllRequest{})
 	responsePost := responseGrpc.Posts
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	response, err := json.Marshal(responsePost)
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	handler.okRequests.Inc()
 	w.WriteHeader(http.StatusOK)
 	w.Write(response)
 }
 
 func (handler *PostHandler) Create(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	handler.allRequests.Inc()
+
 	if !services.JWTValid(w, r) {
 		return
 	}
@@ -226,11 +279,13 @@ func (handler *PostHandler) Create(w http.ResponseWriter, r *http.Request, pathP
 	request := post.PostM{}
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	responsePost, err := services.NewPostClient(handler.postClientAddress).Post(context.TODO(), &request)
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -238,15 +293,19 @@ func (handler *PostHandler) Create(w http.ResponseWriter, r *http.Request, pathP
 	response, err := json.Marshal(responsePost)
 
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	handler.okRequests.Inc()
 	w.WriteHeader(http.StatusOK)
 	w.Write(response)
 }
 
 func (handler *PostHandler) Like(w http.ResponseWriter, r *http.Request, params map[string]string) {
+	handler.allRequests.Inc()
+
 	if !services.JWTValid(w, r) {
 		return
 	}
@@ -257,12 +316,14 @@ func (handler *PostHandler) Like(w http.ResponseWriter, r *http.Request, params 
 	request := post.ReactionRequest{}
 	err := json.NewDecoder(r.Body).Decode(&request.Reaction)
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	request.Reaction.Username = services.LoggedUserUsername
 	responsePost, err := services.NewPostClient(handler.postClientAddress).LikePost(context.TODO(), &request)
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -270,15 +331,19 @@ func (handler *PostHandler) Like(w http.ResponseWriter, r *http.Request, params 
 	response, err := json.Marshal(responsePost)
 
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	handler.okRequests.Inc()
 	w.WriteHeader(http.StatusOK)
 	w.Write(response)
 }
 
 func (handler *PostHandler) Dislike(w http.ResponseWriter, r *http.Request, params map[string]string) {
+	handler.allRequests.Inc()
+
 	if !services.JWTValid(w, r) {
 		return
 	}
@@ -289,12 +354,14 @@ func (handler *PostHandler) Dislike(w http.ResponseWriter, r *http.Request, para
 	request := post.ReactionRequest{}
 	err := json.NewDecoder(r.Body).Decode(&request.Reaction)
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	request.Reaction.Username = services.LoggedUserUsername
 	responsePost, err := services.NewPostClient(handler.postClientAddress).DislikePost(context.TODO(), &request)
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -302,15 +369,19 @@ func (handler *PostHandler) Dislike(w http.ResponseWriter, r *http.Request, para
 	response, err := json.Marshal(responsePost)
 
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	handler.okRequests.Inc()
 	w.WriteHeader(http.StatusOK)
 	w.Write(response)
 }
 
 func (handler *PostHandler) Comment(w http.ResponseWriter, r *http.Request, params map[string]string) {
+	handler.allRequests.Inc()
+
 	if !services.JWTValid(w, r) {
 		return
 	}
@@ -321,12 +392,14 @@ func (handler *PostHandler) Comment(w http.ResponseWriter, r *http.Request, para
 	request := post.CommentRequest{}
 	err := json.NewDecoder(r.Body).Decode(&request.Comment)
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	request.Comment.Username = services.LoggedUserUsername
 	responsePost, err := services.NewPostClient(handler.postClientAddress).CommentPost(context.TODO(), &request)
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -334,15 +407,19 @@ func (handler *PostHandler) Comment(w http.ResponseWriter, r *http.Request, para
 	response, err := json.Marshal(responsePost)
 
 	if err != nil {
+		handler.badRequests.Inc()
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	handler.okRequests.Inc()
 	w.WriteHeader(http.StatusOK)
 	w.Write(response)
 }
 
 func (handler *PostHandler) UploadImage(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	handler.allRequests.Inc()
+
 	span := tracer.StartSpanFromRequest("ImagePostHandler", handler.tracer, r)
 	defer span.Finish()
 	// left shift 32 << 20 which results in 32*2^20 = 33554432
@@ -379,4 +456,6 @@ func (handler *PostHandler) UploadImage(w http.ResponseWriter, r *http.Request, 
 	if err != nil {
 		return
 	}
+
+	handler.okRequests.Inc()
 }
